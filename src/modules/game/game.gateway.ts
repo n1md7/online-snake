@@ -9,14 +9,7 @@ import {
   WebSocketServer,
   WsException,
 } from '@nestjs/websockets';
-import {
-  Logger,
-  OnApplicationShutdown,
-  OnModuleInit,
-  UseFilters,
-  UsePipes,
-  ValidationPipe,
-} from '@nestjs/common';
+import { Logger, OnApplicationShutdown, OnModuleInit, UseFilters, UsePipes, ValidationPipe } from '@nestjs/common';
 import { WsExceptionFilter } from '../../common/filters/ws-exception.filter';
 import { Server, Socket } from 'socket.io';
 import { PlayersService } from '../players/players.service';
@@ -36,12 +29,7 @@ import { DirectionType } from '../../game/entities/users/direction';
   cors: { origin: '*' },
 })
 export class GameGateway
-  implements
-    OnGatewayConnection,
-    OnGatewayDisconnect,
-    OnGatewayInit,
-    OnModuleInit,
-    OnApplicationShutdown
+  implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, OnModuleInit, OnApplicationShutdown
 {
   @WebSocketServer()
   server: Server;
@@ -83,21 +71,23 @@ export class GameGateway
                 });
               } else {
                 this.handlePlayerSpeed(player);
-                this.handlePlayerEatFood(
-                  game.food,
-                  game.grid,
-                  game.players,
-                  player,
-                  (points, point) => {
-                    this.server.to(game.id).emit('food:spawn', { points });
-                    this.server.to(game.id).emit('food:devour', { point });
-                  },
-                );
+                this.handlePlayerEatFood(game.food, game.grid, game.players, player, (points, point) => {
+                  this.server.to(game.id).emit('food:spawn', { points });
+                  this.server.to(game.id).emit('food:devour', { point });
+                });
                 this.handlePlayerUpdate(player, game.grid);
               }
               this.server.to(game.id).emit('player:positions', {
                 blocks: game.grid.getBlocksBySet(player.blockIndices()),
               });
+              // this.server.to(game.id).emit(
+              //   'player:bin',
+              //   Buffer.from(
+              //     JSON.stringify({
+              //       blocks: game.grid.getBlocksBySet(player.blockIndices()),
+              //     }),
+              //   ),
+              // );
             }
           }
         }
@@ -172,10 +162,7 @@ export class GameGateway
   }
 
   @SubscribeMessage('message')
-  handleMessage(
-    @MessageBody() data: string,
-    @ConnectedSocket() client: Socket,
-  ): string {
+  handleMessage(@MessageBody() data: string, @ConnectedSocket() client: Socket): string {
     return 'Hello world!' + data;
   }
 
@@ -187,18 +174,12 @@ export class GameGateway
     }),
   )
   @SubscribeMessage('create')
-  async create(
-    @MessageBody() payload: CreateGameRequest,
-    @ConnectedSocket() client: Socket,
-  ) {
+  async create(@MessageBody() payload: CreateGameRequest, @ConnectedSocket() client: Socket) {
     const gameId = this.gameService.generateId();
     this.logger.verbose(`Creating... New game (${payload.name}).`, client.id);
     try {
       await this.gameService.create(gameId, payload.name, payload.userId);
-      this.logger.verbose(
-        `Game (${payload.name}:${gameId}) created.`,
-        client.id,
-      );
+      this.logger.verbose(`Game (${payload.name}:${gameId}) created.`, client.id);
       client.join(gameId);
       this.logger.verbose(`User joined. Game room (${gameId}).`, client.id);
     } catch (error) {
@@ -217,14 +198,8 @@ export class GameGateway
     }),
   )
   @SubscribeMessage('join')
-  async join(
-    @MessageBody() { gameId, userId }: JoinGameRequest,
-    @ConnectedSocket() client: Socket,
-  ) {
-    this.logger.verbose(
-      `User (${userId}) is joining. Game room (${gameId})...`,
-      client.id,
-    );
+  async join(@MessageBody() { gameId, userId }: JoinGameRequest, @ConnectedSocket() client: Socket) {
+    this.logger.verbose(`User (${userId}) is joining. Game room (${gameId})...`, client.id);
     const game = await this.gameService.get(gameId);
     const player = await this.playerService.get(userId);
     if (!game) {
@@ -241,9 +216,7 @@ export class GameGateway
 
     game.isStarted = true;
     game.food.drop(2);
-    this.server
-      .to(gameId)
-      .emit('game:started', { rows: Grid.ROWS, cols: Grid.COLS, food: 2 });
+    this.server.to(gameId).emit('game:started', { rows: Grid.ROWS, cols: Grid.COLS, food: 2 });
 
     return gameId;
   }
@@ -270,10 +243,7 @@ export class GameGateway
   }
 
   @SubscribeMessage('player:accelerate')
-  async changeSpeed(
-    @MessageBody() data: any,
-    @ConnectedSocket() client: Socket,
-  ) {
+  async changeSpeed(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
     try {
       const player = await this.playerService.get(data.playerId);
       data.accelerate ? player.increaseSpeed() : player.decreaseSpeed();
@@ -287,10 +257,7 @@ export class GameGateway
   }
 
   @SubscribeMessage('give:error')
-  giveMeSomeError(
-    @MessageBody() data: string,
-    @ConnectedSocket() client: Socket,
-  ): string {
+  giveMeSomeError(@MessageBody() data: string, @ConnectedSocket() client: Socket): string {
     throw new WsException({
       name: 'ERR_SOME',
       message: 'You are a dumb ass',
