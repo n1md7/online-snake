@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vite + Lit + TS</title>
+  <link rel="stylesheet" href="src/index.scss" />
+  <script type="module" src="./src/index.ts"></script>
+</head>
+<body>
+  <game-header>
+    <help-text></help-text>
+  </game-header>
+  <game-room>
+    <player-status name="Player(You)" speed="2" points="0" length="4" status="Active"></player-status>
+    <player-status name="Alice(Bot)" speed="2" points="0" length="4" status="Active"></player-status>
+    <player-status name="Nick(Bot)" speed="2" points="0" length="4" status="Disabled"></player-status>
+  </game-room>
+
+  <script type="module">
+    import { modal, spinner } from "./src/index.ts";
+    import { uuidStore } from "./src/store/uuid.store.ts";
+
+    spinner.show();
+
+    const name = uuidStore.getValue();
+    // if(!name) modal.show();
+
+
+    modal.show();
+    modal.on("submit", (name) => {
+      console.log({ name });
+      modal.hide();
+    });
+
+    const player = document.querySelector("player-status");
+    player.name = "Zero";
+    player.speed = 34;
+    player.points = 17;
+    player.status = "Active";
+    let i = 0;
+    setInterval(() => {
+      player.status = ++i % 2 === 0 ? "Active" : "Disabled";
+      player.points++;
+    }, 2000);
+  </script>
+</body>
+</html>
