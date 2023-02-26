@@ -1,4 +1,6 @@
-export default abstract class Store {
+import EventEmitter from 'eventemitter2';
+
+export default abstract class Store extends EventEmitter {
   protected KEY() {
     return 'Default-KEY';
   }
@@ -13,5 +15,6 @@ export default abstract class Store {
 
   setValue(name: string) {
     localStorage.setItem(this.KEY(), name);
+    this.emit('change', name);
   }
 }

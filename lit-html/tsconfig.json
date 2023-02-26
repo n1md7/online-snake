@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "module": "ESNext",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": ["ES2020", "DOM", "DOM.Iterable", "ESNext"],
     "declaration": true,
     "emitDeclarationOnly": true,
     "outDir": "./types",
@@ -17,9 +17,11 @@
     "forceConsistentCasingInFileNames": true,
     "useDefineForClassFields": false,
     "skipLibCheck": true,
+    "downlevelIteration": true,
     "paths": {
       "/*": ["*"]
-    }
+    },
+    "target": "ES5"
   },
   "include": ["src/**/*.ts", "src/custom-tags.d.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]

@@ -7,7 +7,7 @@ export default class HttpClient {
   async isValidUuid(key: string) {
     return fetch(EnvUtil.URL() + '/users/sign-in', {
       method: 'POST',
-      headers: { 'Content-type': 'Application/json' },
+      headers: { 'Content-type': 'application/json' },
       body: JSON.stringify({ key }),
     })
       .then((response) => response.ok)

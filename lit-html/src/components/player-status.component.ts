@@ -10,6 +10,8 @@ export class PlayerStatus extends LitElement {
       margin: 8px auto;
       display: flex;
       justify-content: space-evenly;
+      position: sticky;
+      top: 0;
     }
   `;
 
@@ -45,10 +47,17 @@ export class PlayerStatus extends LitElement {
   protected render() {
     return html`
       <div><strong>${this.name}</strong></div>
-      <div>Speed: <strong>${this.speed}</strong> <span class="text-muted" title="~Blocks Per Second">BPS</span></div>
-      <div>Points: <strong>${this.points}</strong> <span class="text-muted" title="Points">PTS</span></div>
       <div>
-        Length: <strong>${this.length}</strong> <span class="text-muted" title="Snake Length in Blocks">B</span>
+        Speed: <strong>${this.speed}</strong>
+        <span class="text-muted" title="~Blocks Per Second">BPS</span>
+      </div>
+      <div>
+        Points: <strong>${this.points}</strong>
+        <span class="text-muted" title="Points">PTS</span>
+      </div>
+      <div>
+        Length: <strong>${this.length}</strong>
+        <span class="text-muted" title="Snake Length in Blocks">B</span>
       </div>
       <div style=${styleMap(this.activeColor)}><strong>${this.status}</strong></div>
     `;

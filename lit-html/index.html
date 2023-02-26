@@ -12,36 +12,31 @@
   <game-header>
     <help-text></help-text>
   </game-header>
-  <game-room>
-    <player-status name="Player(You)" speed="2" points="0" length="4" status="Active"></player-status>
-    <player-status name="Alice(Bot)" speed="2" points="0" length="4" status="Active"></player-status>
-    <player-status name="Nick(Bot)" speed="2" points="0" length="4" status="Disabled"></player-status>
+  <game-room rows="48" cols="80" blockSize="10">
+    <player-status slot="player" name="Player(You)" speed="2" points="0" length="4" status="Active"></player-status>
+    <div slot="other-players">
+      <player-status name="Alice(Bot)" speed="2" points="0" length="4" status="Active"></player-status>
+      <player-status name="Nick(Bot)" speed="2" points="0" length="4" status="Disabled"></player-status>
+    </div>
   </game-room>
 
   <script type="module">
     import { modal, spinner } from "./src/index.ts";
     import { uuidStore } from "./src/store/uuid.store.ts";
 
-    spinner.show();
-
-    const name = uuidStore.getValue();
+    // spinner.show();
+    // const name = uuidStore.getValue();
     // if(!name) modal.show();
-
-
-    modal.show();
-    modal.on("submit", (name) => {
-      console.log({ name });
-      modal.hide();
-    });
+    // modal.on("submit", (name) => {
+    //   console.log({ name });
+    //   modal.hide();
+    // });
 
     const player = document.querySelector("player-status");
     player.name = "Zero";
-    player.speed = 34;
-    player.points = 17;
-    player.status = "Active";
     let i = 0;
     setInterval(() => {
-      player.status = ++i % 2 === 0 ? "Active" : "Disabled";
+      player.status = i++ % 2 === 0 ? "Active" : "Disabled";
       player.points++;
     }, 2000);
   </script>
