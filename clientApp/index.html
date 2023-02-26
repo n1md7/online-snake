@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vite + Lit + TS</title>
+  <link rel="stylesheet" href="src/index.scss" />
+  <script type="module" src="./src/index.ts"></script>
+</head>
+<body>
+  <game-header>
+    <help-text></help-text>
+  </game-header>
+  <game-room rows="48" cols="80" blockSize="10">
+    <player-status slot="player" name="Player(You)" speed="2" points="0" length="4" status="Active"></player-status>
+    <div slot="other-players">
+      <player-status name="Alice(Bot)" speed="2" points="0" length="4" status="Active"></player-status>
+      <player-status name="Nick(Bot)" speed="2" points="0" length="4" status="Disabled"></player-status>
+    </div>
+  </game-room>
+
+  <script type="module">
+    import { modal, spinner, httpClient } from "./src/index.ts";
+    import { userStore } from "./src/store/user.store.ts";
+    import { gameObserver } from './src/observers/game.observer';
+
+    const gameStart = () => {
+      modal.hide();
+      spinner.hide();
+      gameObserver.emit('game:started');
+      console.log("Game Started");
+    }
+
+    spinner.show();
+    const { uuid = '' } = userStore.getValue();
+    httpClient.isValidUuid(uuid).then(isValid => {
+      if (isValid) return gameStart();
+
+      modal.show();
+    });
+
+    modal.on("submit", (name) => {
+      httpClient.fetchUuid(name).then(gameStart).catch(console.error);
+    });
+  </script>
+</body>
+</html>

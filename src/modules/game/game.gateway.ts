@@ -10,7 +10,7 @@ import {
   WsException,
 } from '@nestjs/websockets';
 import { Logger, OnApplicationShutdown, OnModuleInit, UseFilters, UsePipes, ValidationPipe } from '@nestjs/common';
-import { WsExceptionFilter } from '../../common/filters/ws-exception.filter';
+import { WsExceptionFilter } from '/src/common/filters/ws-exception.filter';
 import { Server, Socket } from 'socket.io';
 import { PlayersService } from '../players/players.service';
 import { UsersService } from '../users/users.service';
@@ -18,10 +18,10 @@ import { CreateGameRequest } from './requests/create-game.request';
 import { GameService } from './game.service';
 import { JoinGameRequest } from './requests/join-game.request';
 import { GameStoreService } from '../store/game-store/game-store.service';
-import { Player } from '../../game/entities/users/player';
-import { Food } from '../../game/entities/grid/food';
-import { Grid } from '../../game/entities/grid/grid';
-import { DirectionType } from '../../game/entities/users/direction';
+import { Player } from '/src/game/entities/users/player';
+import { Food } from '/src/game/entities/grid/food';
+import { Grid } from '/src/game/entities/grid/grid';
+import { DirectionType } from '/src/game/entities/users/direction';
 
 @UseFilters(new WsExceptionFilter())
 @WebSocketGateway({
