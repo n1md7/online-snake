@@ -2,7 +2,6 @@ import Node, { DummyHeadNode, DummyTailNode } from './node';
 
 export class Queue<T> {
   private readonly _dummyHead: DummyHeadNode;
-
   private readonly _dummyTail: DummyTailNode;
 
   constructor() {

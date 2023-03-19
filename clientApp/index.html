@@ -24,11 +24,14 @@
     import { modal, spinner, httpClient } from "./src/index.ts";
     import { userStore } from "./src/store/user.store.ts";
     import { gameObserver } from './src/observers/game.observer';
+    import { url } from  './src/utils/url.utils';
 
     const gameStart = () => {
+      const gid = url.getGameID();
+
       modal.hide();
       spinner.hide();
-      gameObserver.emit('game:started');
+      gameObserver.emit('game:started', gid);
       console.log("Game Started");
     }
 

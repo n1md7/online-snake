@@ -4,6 +4,7 @@ import EventEmitter from 'eventemitter2';
 import Board from '/src/board/board';
 import Direction from '/src/player/components/Direction';
 import { DoublyLinkedList } from '/src/utils/data-structures/doubly-linked-list';
+import { Socket } from 'socket.io-client';
 
 export enum Status {
   Alive,
@@ -28,7 +29,9 @@ export default class Player extends EventEmitter {
   private _status = Status.Alive;
   private _accelerate = false;
   private _lastUpdate = 0;
-  private _enabled = true;
+  // private _enabled = true;
+  private _uuid!: string;
+  private _socket!: Socket;
 
   constructor(board: Board, color = '#c93f3f') {
     super();
@@ -43,6 +46,10 @@ export default class Player extends EventEmitter {
 
   get body() {
     return this._body;
+  }
+
+  get uuid() {
+    return this._uuid;
   }
 
   private _name = 'John Doe';
@@ -63,12 +70,18 @@ export default class Player extends EventEmitter {
     return this._speed;
   }
 
-  get direction() {
-    return this._direction;
+  setUuid(uuid: string) {
+    this._uuid = uuid;
   }
 
   setName(name: string) {
     this._name = name;
+
+    return this;
+  }
+
+  setSocket(socket: Socket) {
+    this._socket = socket;
 
     return this;
   }
@@ -94,6 +107,14 @@ export default class Player extends EventEmitter {
     for (const block of blocks) this._body.push(block);
 
     return this;
+  }
+
+  blocksMatch(blocks: number[]) {
+    let bid = -1;
+    for (const id of this._body) {
+      if (id !== blocks[++bid]) return false;
+    }
+    return true;
   }
 
   needsUpdate(currentTick: number) {
@@ -180,5 +201,45 @@ export default class Player extends EventEmitter {
     }
     // Just to set different color
     this._board.getBlockByIdx(head).updateAsBody('#123456');
+  }
+
+  goLeft() {
+    this._direction.emit('go:left');
+    if (this._socket) {
+      this._socket.emit('player:direction', {
+        playerId: this._uuid,
+        direction: 'Left',
+      });
+    }
+  }
+
+  goRight() {
+    this._direction.emit('go:right');
+    if (this._socket) {
+      this._socket.emit('player:direction', {
+        playerId: this._uuid,
+        direction: 'Right',
+      });
+    }
+  }
+
+  goUp() {
+    this._direction.emit('go:up');
+    if (this._socket) {
+      this._socket.emit('player:direction', {
+        playerId: this._uuid,
+        direction: 'Up',
+      });
+    }
+  }
+
+  goDown() {
+    this._direction.emit('go:down');
+    if (this._socket) {
+      this._socket.emit('player:direction', {
+        playerId: this._uuid,
+        direction: 'Down',
+      });
+    }
   }
 }

@@ -53,6 +53,9 @@ export class Game {
   }
 
   addPlayer(player: Player) {
+    const hasPlayer = this._players.findIndex((p) => p.id === player.id) !== -1;
+    if (hasPlayer) return;
+
     this._players.push(player);
     for (const [i, idx] of player.blockIndices().entries()) {
       const { row, col } = Grid.get2dIdx(idx);
@@ -64,7 +67,7 @@ export class Game {
   }
 
   needsEmit(currentEmit: number) {
-    if (currentEmit - this._lastEmit >= ms('1 second')) {
+    if (currentEmit - this._lastEmit >= ms('60ms')) {
       this._lastEmit = currentEmit;
       return true;
     }

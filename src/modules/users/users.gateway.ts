@@ -11,7 +11,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger, UseFilters, UsePipes, ValidationPipe } from '@nestjs/common';
-import { WsExceptionFilter } from '../../common/filters/ws-exception.filter';
+import { WsExceptionFilter } from '/src/common/filters/ws-exception.filter';
 import { SignInRequest } from './requests/sign-in.request';
 import { TokenService } from '../token/token.service';
 
@@ -55,19 +55,13 @@ export class UsersGateway
   }
 
   @SubscribeMessage('message')
-  handleMessage(
-    @MessageBody() data: string,
-    @ConnectedSocket() client: Socket,
-  ): string {
+  handleMessage(@MessageBody() data: string, @ConnectedSocket() client: Socket): string {
     return 'Hello world!' + data;
   }
 
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   @SubscribeMessage('validate')
-  validate(
-    @MessageBody() data: SignInRequest,
-    @ConnectedSocket() client: Socket,
-  ) {
+  validate(@MessageBody() data: SignInRequest, @ConnectedSocket() client: Socket) {
     return data;
   }
 

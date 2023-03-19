@@ -9,13 +9,14 @@ import EventEmitter from 'eventemitter2';
 export class GameController implements ReactiveController {
   private readonly host: ReactiveControllerHost & CanvasView;
   private board!: Board;
-  private players!: Player[];
   private game!: GameService;
   private observer!: EventEmitter;
+  private socketConnected: boolean;
 
   constructor(host: ReactiveControllerHost & CanvasView) {
     this.host = host;
     this.observer = gameObserver;
+    this.socketConnected = false;
 
     host.addController(this);
   }
@@ -27,7 +28,7 @@ export class GameController implements ReactiveController {
   hostConnected() {
     // Let's populate Board/Grid beforehand
     this.board = new Board(this.host.rows, this.host.cols);
-    this.observer.once('game:started', () => this.initialize());
+    this.observer.once('game:started', this.initialize.bind(this));
 
     console.info('Host subscribed!');
   }
@@ -43,16 +44,16 @@ export class GameController implements ReactiveController {
     // console.log('host updated');
   }
 
-  gameLoop(currentTick = 0): void {
+  gameLoopRun(currentTick = 0): void {
     const signal = this.update(currentTick);
     if (signal === 'stop') return void 0;
     if (signal === 'continue') this.host.requestUpdate();
 
-    window.requestAnimationFrame(this.gameLoop.bind(this));
+    window.requestAnimationFrame(this.gameLoopRun.bind(this));
   }
 
   update(currentTick: number) {
-    for (const player of this.players) {
+    for (const player of this.game.players) {
       if (!player.isAlive) continue;
 
       if (player.needsUpdate(currentTick)) {
@@ -65,22 +66,22 @@ export class GameController implements ReactiveController {
     return 'continue';
   }
 
-  private initialize() {
-    const player = new Player(this.board).addInitialBlocks([0, 1, 2, 3, 4, 5, 6]);
-    // @ts-ignore
-    window.player = player;
-    const rivals = [
-      new Player(this.board, 'blue').addInitialBlocks([300, 301, 302]),
-      new Player(this.board, 'purple').addInitialBlocks([600, 601, 602]),
+  private initialize(gid: string) {
+    const rivals: Player[] = [
+      // new Player(this.board, 'blue').addInitialBlocks([300, 301, 302]),
+      // new Player(this.board, 'purple').addInitialBlocks([600, 601, 602]),
     ];
-    this.game = new GameService(player, rivals);
-    this.players = [player, ...rivals];
+    this.game = new GameService(this.board);
 
     this.game.subscribe();
-    this.gameLoop();
+    this.game.on('connected', () => {
+      this.socketConnected = true;
+      gid ? this.game.joinGame(gid) : this.game.createGame();
+    });
+    this.gameLoopRun();
 
     // TODO: This should be done in a better way
-    for (const [idx, player] of this.players.entries()) {
+    for (const [idx, player] of this.game.players.entries()) {
       const status = this.host.players[idx];
       player.speed.on('change', (speed: number) => {
         status.speed = +Number(1000 / speed).toFixed(2);

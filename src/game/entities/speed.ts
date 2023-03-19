@@ -1,4 +1,4 @@
-import { MathUtils } from '../../common/utils/math.utils';
+import { MathUtils } from '/src/common/utils/math.utils';
 import { Counter } from './counter';
 
 export class Speed extends Counter {

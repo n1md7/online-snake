@@ -9,7 +9,14 @@ import {
   WebSocketServer,
   WsException,
 } from '@nestjs/websockets';
-import { Logger, OnApplicationShutdown, OnModuleInit, UseFilters, UsePipes, ValidationPipe } from '@nestjs/common';
+import {
+  Logger,
+  OnApplicationShutdown,
+  OnModuleInit,
+  UseFilters,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
 import { WsExceptionFilter } from '/src/common/filters/ws-exception.filter';
 import { Server, Socket } from 'socket.io';
 import { PlayersService } from '../players/players.service';
@@ -29,10 +36,15 @@ import { DirectionType } from '/src/game/entities/users/direction';
   cors: { origin: '*' },
 })
 export class GameGateway
-  implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, OnModuleInit, OnApplicationShutdown
+  implements
+    OnGatewayConnection,
+    OnGatewayDisconnect,
+    OnGatewayInit,
+    OnModuleInit,
+    OnApplicationShutdown
 {
   @WebSocketServer()
-  server: Server;
+  io: Server;
 
   private readonly logger = new Logger('GameGateway');
   private timerId: ReturnType<typeof setInterval>;
@@ -61,39 +73,36 @@ export class GameGateway
     try {
       const currentTick = Date.now();
       for (const game of this.gameStore.values()) {
-        if (game.isStarted) {
+        if (!game.isStarted) continue;
+
+        if (game.needsEmit(currentTick)) {
           for (const player of game.players) {
             if (player.isActive() && player.needsUpdate(currentTick)) {
               if (!player.canMove(game.grid)) {
-                this.server.to(game.id).emit('player:died', {
+                this.io.to(game.id).emit('player:died', {
                   id: player.id,
                   status: player.getStatus(),
                 });
               } else {
                 this.handlePlayerSpeed(player);
-                this.handlePlayerEatFood(game.food, game.grid, game.players, player, (points, point) => {
-                  this.server.to(game.id).emit('food:spawn', { points });
-                  this.server.to(game.id).emit('food:devour', { point });
-                });
+                this.handlePlayerEatFood(
+                  game.food,
+                  game.grid,
+                  game.players,
+                  player,
+                  (points, point) => {
+                    this.io.to(game.id).emit('food:spawn', { points });
+                    this.io.to(game.id).emit('food:devour', { point });
+                  },
+                );
                 this.handlePlayerUpdate(player, game.grid);
               }
-              this.server.to(game.id).emit('player:positions', {
-                blocks: game.grid.getBlocksBySet(player.blockIndices()),
-              });
-              // this.server.to(game.id).emit(
-              //   'player:bin',
-              //   Buffer.from(
-              //     JSON.stringify({
-              //       blocks: game.grid.getBlocksBySet(player.blockIndices()),
-              //     }),
-              //   ),
-              // );
+
+              this.io
+                .in(game.id)
+                .emit('player:positions', player.id, [...player.blockIndices()]);
             }
           }
-        }
-        if (game.needsEmit(currentTick)) {
-          // Deliver important data here. Like game ended paused or wherever state it is
-          // Maybe update statistics too
         }
       }
     } catch (e) {
@@ -133,28 +142,28 @@ export class GameGateway
     }
   }
 
-  async handleConnection(@ConnectedSocket() client: Socket) {
-    const userId = client.handshake.auth.userId;
+  async handleConnection(@ConnectedSocket() socket: Socket) {
+    const userId = socket.handshake.auth.userId;
     if (!userId) {
-      this.logger.warn('USER_ID is null during the handshake', client.id);
-      return client.emit('error', {
+      this.logger.warn('USER_ID is null during the handshake', socket.id);
+      return socket.emit('error', {
         code: 'UNAUTHORIZED',
         message: 'USER_ID is null during the handshake',
       });
     }
 
-    this.logger.log(`User connected (${userId})`, client.id);
+    this.logger.log(`User connected (${userId})`, socket.id);
 
     const user = await this.userService.details(userId);
     if (!user) {
-      this.logger.warn(`USER_ID is invalid: (${userId})`, client.id);
-      return client.emit('error', {
+      this.logger.warn(`USER_ID is invalid: (${userId})`, socket.id);
+      return socket.emit('error', {
         code: 'UNAUTHORIZED',
         message: 'USER_ID is invalid',
       });
     }
 
-    await this.playerService.create(user.id, user.name, client.id);
+    await this.playerService.create(user.id, user.name, socket.id);
   }
 
   handleDisconnect(@ConnectedSocket() client: Socket): void {
@@ -174,20 +183,24 @@ export class GameGateway
     }),
   )
   @SubscribeMessage('create')
-  async create(@MessageBody() payload: CreateGameRequest, @ConnectedSocket() client: Socket) {
+  async create(
+    @MessageBody() payload: CreateGameRequest,
+    @ConnectedSocket() socket: Socket,
+  ) {
     const gameId = this.gameService.generateId();
-    this.logger.verbose(`Creating... New game (${payload.name}).`, client.id);
+    this.logger.verbose(`Creating... New game (${payload.name}).`, socket.id);
     try {
       await this.gameService.create(gameId, payload.name, payload.userId);
-      this.logger.verbose(`Game (${payload.name}:${gameId}) created.`, client.id);
-      client.join(gameId);
-      this.logger.verbose(`User joined. Game room (${gameId}).`, client.id);
+      this.logger.verbose(`Game (${payload.name}:${gameId}) created.`, socket.id);
     } catch (error) {
-      this.logger.error(error.message, client.id);
+      this.logger.error(error.message, socket.id);
       return { error: error.message };
     }
 
-    return { gameId };
+    const game = await this.gameService.get(gameId);
+    game.isStarted = true; // Start by default
+
+    socket.emit('game:created', gameId);
   }
 
   @UsePipes(
@@ -198,8 +211,14 @@ export class GameGateway
     }),
   )
   @SubscribeMessage('join')
-  async join(@MessageBody() { gameId, userId }: JoinGameRequest, @ConnectedSocket() client: Socket) {
-    this.logger.verbose(`User (${userId}) is joining. Game room (${gameId})...`, client.id);
+  async join(
+    @MessageBody() { gameId, userId }: JoinGameRequest,
+    @ConnectedSocket() socket: Socket,
+  ) {
+    this.logger.verbose(
+      `User (${userId}) is joining. Game room (${gameId})...`,
+      socket.id,
+    );
     const game = await this.gameService.get(gameId);
     const player = await this.playerService.get(userId);
     if (!game) {
@@ -209,16 +228,16 @@ export class GameGateway
         status: 404,
       });
     }
-    client.join(gameId);
+    socket.join(gameId);
     game.addPlayer(player);
     await this.gameService.update(gameId, game);
-    this.logger.verbose(`User joined. Game room (${gameId}).`, client.id);
+    this.logger.verbose(`User joined. Game room (${gameId}).`, socket.id);
 
-    game.isStarted = true;
-    game.food.drop(2);
-    this.server.to(gameId).emit('game:started', { rows: Grid.ROWS, cols: Grid.COLS, food: 2 });
+    // Sent only to joined client
+    socket.emit('game:started', { rows: Grid.ROWS, cols: Grid.COLS, food: 2, userId });
 
-    return gameId;
+    // Sent to everybody except the sender
+    socket.to(gameId).emit('player:joined', { userId });
   }
 
   @SubscribeMessage('player:direction')
@@ -234,6 +253,7 @@ export class GameGateway
       if (data.direction === 'Left') player.setDirection(DirectionType.Left);
       if (data.direction === 'Right') player.setDirection(DirectionType.Right);
     } catch (e) {
+      this.logger.verbose(e.message);
       throw new WsException({
         name: 'ERR_PLAYER_DIR',
         message: 'PLayer cannot move as you like',
@@ -257,7 +277,10 @@ export class GameGateway
   }
 
   @SubscribeMessage('give:error')
-  giveMeSomeError(@MessageBody() data: string, @ConnectedSocket() client: Socket): string {
+  giveMeSomeError(
+    @MessageBody() data: string,
+    @ConnectedSocket() client: Socket,
+  ): string {
     throw new WsException({
       name: 'ERR_SOME',
       message: 'You are a dumb ass',
